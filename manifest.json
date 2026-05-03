@@ -10,12 +10,12 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "images/bals.png",
+      "src": "images/kids.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "images/bals.png",
+      "src": "images/kids.png",
       "sizes": "512x512",
       "type": "image/png"
     }

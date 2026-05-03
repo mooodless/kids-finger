@@ -3,386 +3,579 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>لعبة الشكل الهندسي ثلاثي الأبعاد</title>
+    <title>لعبة تركيب الصورة - أعد تجميع الصورة الأساسية</title>
     <style>
-        body {
+        * {
             margin: 0;
-            overflow: hidden;
-            font-family: 'Arial', sans-serif;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
         }
-        
-        @media (max-width: 600px) {
-            #score {
-                font-size: 14px;
-                top: 15px;
-                right: 15px;
-                padding: 8px 16px;
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(145deg, #1a2a3a 0%, #0f1a24 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none;
+            padding: 20px;
+        }
+
+        .game-wrapper {
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 24px;
+            padding: 20px 25px 25px 25px;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        .puzzle-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        /* صورة المعاينة الصغيرة */
+        .preview-area {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        .thumbnail {
+            width: 120px;
+            height: 120px;
+            border-radius: 16px;
+            background-size: cover;
+            background-position: center;
+            border: 3px solid #ffd966;
+            box-shadow: 0 4px 12px black;
+            background-color: #2e3b2c;
+        }
+
+        /* شبكة الألغاز */
+        .grid-board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            background: #2e3b2c;
+            border-radius: 16px;
+            padding: 10px;
+            gap: 6px;
+            box-shadow: inset 0 0 0 2px rgba(255, 215, 150, 0.3), 0 10px 20px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .grid-board {
+            grid-template-rows: repeat(8, 1fr);
+            aspect-ratio: 5 / 8;
+        }
+
+        /* كل قطعة - جزء حقيقي من الصورة */
+        .puzzle-piece {
+            aspect-ratio: 1 / 1;
+            background-size: cover;
+            background-repeat: no-repeat;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: 0.1s linear;
+            cursor: grab;
+            touch-action: none;
+            will-change: transform;
+            position: relative;
+            background-color: #4a5b44;
+        }
+
+        .puzzle-piece:active {
+            cursor: grabbing;
+        }
+
+        .puzzle-piece.dragging {
+            opacity: 0.7;
+            cursor: grabbing;
+            filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.6));
+            z-index: 999;
+        }
+
+        .drop-zone-highlight {
+            box-shadow: 0 0 0 3px #ffd966, inset 0 0 0 2px rgba(255, 235, 140, 0.9);
+            transform: scale(0.97);
+            transition: 0.05s linear;
+        }
+
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-top: 10px;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .status {
+            background: #000000aa;
+            backdrop-filter: blur(10px);
+            padding: 8px 20px;
+            border-radius: 40px;
+            color: #ffefcf;
+            font-weight: bold;
+            font-size: 0.9rem;
+            border: 1px solid #ffd966aa;
+        }
+
+        button {
+            background: #f5b042;
+            border: none;
+            padding: 8px 24px;
+            border-radius: 40px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: #2d2b1f;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            font-family: inherit;
+        }
+
+        button:hover {
+            background: #ffc857;
+            transform: scale(1.02);
+        }
+
+        .upload-btn {
+            background: #4a7c59;
+            color: white;
+        }
+
+        .upload-btn:hover {
+            background: #5f9e6e;
+        }
+
+        .hint-message {
+            background: #1f2a1cee;
+            color: #ffe1a0;
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        @media (max-width: 700px) {
+            .grid-board {
+                gap: 4px;
+                padding: 6px;
             }
+            .info-panel {
+                gap: 8px;
+            }
+            .status, button, .hint-message {
+                font-size: 0.7rem;
+                padding: 5px 12px;
+            }
+            .thumbnail {
+                width: 80px;
+                height: 80px;
+            }
+        }
+
+        .winner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        .winner-card {
+            background: #fef7e0;
+            border-radius: 48px;
+            padding: 30px 40px;
+            text-align: center;
+            box-shadow: 0 25px 40px black;
+            animation: pop 0.4s ease-out;
+        }
+        .winner-card h2 {
+            color: #2a6b2f;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .winner-card button {
+            background: #2a6b2f;
+            color: white;
+            margin-top: 20px;
+            font-size: 1.1rem;
+            padding: 10px 32px;
+        }
+        @keyframes pop {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
         }
     </style>
 </head>
 <body>
+<div class="game-wrapper">
+    <div class="puzzle-container">
+        <div class="preview-area">
+            <div class="thumbnail" id="thumbnailPreview" style="background-image: url('');"></div>
+        </div>
+        <div class="grid-board" id="puzzleGrid"></div>
+        
+        <div class="info-panel">
+            <div class="status" id="statusMsg">🧩 رتب المربعات لتظهر الصورة الكاملة</div>
+            <input type="file" id="uploadImage" accept="image/*" style="display: none;">
+            <button id="uploadBtn" class="upload-btn">📷 استخدام صورة</button>
+            <button id="shuffleBtn">🔄 ترتيب عشوائي</button>
+            <div class="hint-message">👇 اسحب القطعة إلى مكانها الصحيح</div>
+        </div>
+    </div>
+</div>
 
-    <!-- استيراد مكتبة Three.js -->
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
-            }
+<script>
+    (function(){
+        const COLS = 5;
+        const ROWS = 8;
+        const TOTAL_PIECES = COLS * ROWS;
+        
+        let piecesData = [];      // كل قطعة: { id, correctIndex, imgX, imgY, width, height }
+        let currentOrder = [];     // ترتيب القطع الحالي (قائمة بأرقام id القطع)
+        let pieceWidth = 0, pieceHeight = 0;
+        let originalImage = null;
+        let isImageLoaded = false;
+        let currentImageUrl = null;
+        
+        const gridContainer = document.getElementById('puzzleGrid');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileInput = document.getElementById('uploadImage');
+        const statusDiv = document.getElementById('statusMsg');
+        const thumbnailPreview = document.getElementById('thumbnailPreview');
+        
+        // متغيرات السحب والإفلات
+        let draggedPieceId = null;
+        let isDragging = false;
+        let ghostElement = null;
+        let currentTargetCell = null;
+        
+        // ========== الصورة الافتراضية الجميلة (طبيعة خلابة) بدلاً من الأشكال الهندسية ==========
+        function getDefaultImageUrl() {
+            // صورة طبيعة جميلة عالية الجودة (من مصدر موثوق) - مناظر طبيعية
+            return 'https://images.pexels.com/photos/268533/pexels-photo-268533.jpeg?auto=compress&cs=tinysrgb&w=800&h=1280&fit=crop';
+            // يمكنك تغيير هذا الرابط إلى images/kids.png إذا أردت
         }
-    </script>
-
-    <script type="module">
-        import * as THREE from 'three';
-
-        // --- إعداد المشهد ---
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0a0a20); // لون خلفية داكن
         
-        // --- إعداد الكاميرا (منظور ثابت بدون تكبير/تصغير) ---
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(5, 3, 8);
-        camera.lookAt(0, 0, 0);
-        
-        // --- إعداد المسرّع (Renderer) مع تحسينات للأجهزة اللمسية ---
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // تحسين الأداء
-        renderer.shadowMap.enabled = true; // تفعيل الظلال
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        document.body.appendChild(renderer.domElement);
-        
-        // منع سلوك التكبير/التصغير باللمس عبر CSS و HTML meta
-        // تم إضافة user-scalable=no في meta، ونمنع أيضًا أحداث اللمس المزدوجة التي تسبب التكبير
-        renderer.domElement.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 2) {
-                e.preventDefault(); // منع حركة القرص للتكبير
-            }
-        }, { passive: false });
-        
-        // منع حدث wheel (عجلة الماوس) لمنع التكبير/التصغير
-        window.addEventListener('wheel', (e) => {
-            e.preventDefault();
-        }, { passive: false });
-        
-        // منع حدث keydown للتحكم في التكبير (مثل Ctrl +)
-        window.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '_')) {
-                e.preventDefault();
-            }
-        });
-        
-        // --- الإضاءة ---
-        
-        // ضوء محيطي ناعم
-        const ambientLight = new THREE.AmbientLight(0x404060);
-        scene.add(ambientLight);
-        
-        // ضوء رئيسي (مباشر) يخلق ظلالاً
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-        directionalLight.position.set(2, 5, 3);
-        directionalLight.castShadow = true;
-        directionalLight.receiveShadow = true;
-        directionalLight.shadow.mapSize.width = 1024;
-        directionalLight.shadow.mapSize.height = 1024;
-        const d = 10;
-        directionalLight.shadow.camera.left = -d;
-        directionalLight.shadow.camera.right = d;
-        directionalLight.shadow.camera.top = d;
-        directionalLight.shadow.camera.bottom = -d;
-        directionalLight.shadow.camera.near = 1;
-        directionalLight.shadow.camera.far = 15;
-        scene.add(directionalLight);
-        
-        // أضواء ملونة للزينة
-        const light1 = new THREE.PointLight(0xff0040, 1, 10);
-        light1.position.set(2, 1, 2);
-        scene.add(light1);
-        
-        const light2 = new THREE.PointLight(0x00ff40, 1, 10);
-        light2.position.set(-2, 1, -2);
-        scene.add(light2);
-        
-        const light3 = new THREE.PointLight(0x0040ff, 1, 10);
-        light3.position.set(2, 1, -2);
-        scene.add(light3);
-        
-        // --- إنشاء الشكل الهندسي الرئيسي (مجسم متعدد الأشكال) ---
-        
-        // مجموعة لتجميع الأشكال
-        const mainGroup = new THREE.Group();
-        
-        // شكل مركزي: كرة متعددة الأوجه (Icosahedron)
-        const geometry1 = new THREE.IcosahedronGeometry(1, 0); // تفاصيل قليلة للحصول على شكل هندسي واضح
-        const material1 = new THREE.MeshStandardMaterial({ 
-            color: 0xff5500,
-            emissive: 0x331100,
-            roughness: 0.3,
-            metalness: 0.1,
-            wireframe: false
-        });
-        const coreShape = new THREE.Mesh(geometry1, material1);
-        coreShape.castShadow = true;
-        coreShape.receiveShadow = true;
-        mainGroup.add(coreShape);
-        
-        // إطار سلكي حول الكرة
-        const wireframeGeo = new THREE.IcosahedronGeometry(1.05, 0);
-        const wireframeMat = new THREE.MeshStandardMaterial({
-            color: 0xffaa00,
-            emissive: 0x442200,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.7
-        });
-        const wireframeSphere = new THREE.Mesh(wireframeGeo, wireframeMat);
-        wireframeSphere.castShadow = true;
-        wireframeSphere.receiveShadow = false;
-        mainGroup.add(wireframeSphere);
-        
-        // حلقات تدور حول الشكل (Torus)
-        const ringMaterial = new THREE.MeshStandardMaterial({ color: 0x33aaff, emissive: 0x113366 });
-        const ring1 = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.05, 16, 100), ringMaterial);
-        ring1.rotation.x = Math.PI / 2;
-        ring1.rotation.z = 0.3;
-        ring1.castShadow = true;
-        ring1.receiveShadow = false;
-        mainGroup.add(ring1);
-        
-        const ring2 = new THREE.Mesh(new THREE.TorusGeometry(1.9, 0.05, 16, 100), ringMaterial);
-        ring2.rotation.y = 0.8;
-        ring2.rotation.x = 0.7;
-        ring2.material = new THREE.MeshStandardMaterial({ color: 0xff33aa, emissive: 0x331122 });
-        ring2.castShadow = true;
-        ring2.receiveShadow = false;
-        mainGroup.add(ring2);
-        
-        // مكعبات صغيرة تدور حول الشكل الرئيسي
-        const smallCubesGroup = new THREE.Group();
-        for (let i = 0; i < 8; i++) {
-            const cubeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-            const cubeMat = new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff });
-            const cube = new THREE.Mesh(cubeGeo, cubeMat);
-            const angle = (i / 8) * Math.PI * 2;
-            cube.position.set(Math.cos(angle) * 2.2, Math.sin(angle * 2) * 0.5, Math.sin(angle) * 2.2);
-            cube.castShadow = true;
-            cube.receiveShadow = false;
-            smallCubesGroup.add(cube);
-        }
-        mainGroup.add(smallCubesGroup);
-        
-        scene.add(mainGroup);
-        
-        // --- إنشاء أرضية عاكسة ---
-        const floorGeometry = new THREE.CircleGeometry(8, 32);
-        const floorMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x1a1a2e,
-            roughness: 0.4,
-            metalness: 0.1,
-            transparent: true,
-            opacity: 0.6,
-            side: THREE.DoubleSide
-        });
-        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-        floor.rotation.x = -Math.PI / 2;
-        floor.position.y = -1.2;
-        floor.receiveShadow = true;
-        scene.add(floor);
-        
-        // شبكة أرضية للزينة
-        const gridHelper = new THREE.GridHelper(15, 20, 0x3366ff, 0x2244aa);
-        gridHelper.position.y = -1.1;
-        scene.add(gridHelper);
-        
-        // --- إضافة جزيئات صغيرة (Stars) حول المشهد ---
-        const starsGeometry = new THREE.BufferGeometry();
-        const starsCount = 600;
-        const starsPositions = new Float32Array(starsCount * 3);
-        for (let i = 0; i < starsCount * 3; i += 3) {
-            starsPositions[i] = (Math.random() - 0.5) * 30;
-            starsPositions[i+1] = (Math.random() - 0.5) * 20;
-            starsPositions[i+2] = (Math.random() - 0.5) * 30;
-        }
-        starsGeometry.setAttribute('position', new THREE.BufferAttribute(starsPositions, 3));
-        const starsMaterial = new THREE.PointsMaterial({ color: 0x88aaff, size: 0.05, transparent: true });
-        const stars = new THREE.Points(starsGeometry, starsMaterial);
-        scene.add(stars);
-        
-        // --- متغيرات التحكم باللمس والحركة ---
-        let targetRotationX = 0;
-        let targetRotationY = 0;
-        let currentRotationX = 0;
-        let currentRotationY = 0;
-        let isTouching = false;
-        let touchX = 0;
-        let touchY = 0;
-        
-        // --- متغيرات لتأثير الدوران التلقائي ---
-        let autoRotateSpeed = 0.005;
-        
-        // --- أحداث اللمس للهواتف والأجهزة اللوحية ---
-        renderer.domElement.addEventListener('touchstart', handleTouchStart, { passive: false });
-        renderer.domElement.addEventListener('touchmove', handleTouchMove, { passive: false });
-        renderer.domElement.addEventListener('touchend', handleTouchEnd);
-        renderer.domElement.addEventListener('touchcancel', handleTouchEnd);
-        
-        // --- أحداث الماوس لأجهزة الكمبيوتر (اختياري) ---
-        renderer.domElement.addEventListener('mousedown', handleMouseDown);
-        renderer.domElement.addEventListener('mousemove', handleMouseMove);
-        renderer.domElement.addEventListener('mouseup', handleMouseUp);
-        renderer.domElement.addEventListener('mouseleave', handleMouseUp);
-        
-        // --- دوال معالجة اللمس ---
-        function handleTouchStart(event) {
-            event.preventDefault();
-            // منع تكبير اللمس المزدوج
-            if (event.touches.length === 2) return;
+        // تحميل الصورة (من رابط أو من ملف)
+        function loadImageFromUrlOrFile(url, isFile = false, file = null) {
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
             
-            const touch = event.touches[0];
-            if (touch) {
-                isTouching = true;
-                touchX = (touch.clientX / window.innerWidth) * 2 - 1;
-                touchY = -(touch.clientY / window.innerHeight) * 2 + 1;
+            img.onload = function() {
+                originalImage = img;
+                pieceWidth = img.width / COLS;
+                pieceHeight = img.height / ROWS;
                 
-                
-                // تأثير مؤقت عند اللمس
-                mainGroup.children.forEach(child => {
-                    if (child.material && !child.material.wireframe) {
-                        child.material.emissive.setHex(0x444400);
-                        setTimeout(() => {
-                            if (child.material) child.material.emissive.setHex(0x000000);
-                        }, 200);
+                // بناء بيانات القطع (كل قطعة تحمل جزءاً من الصورة)
+                piecesData = [];
+                for (let row = 0; row < ROWS; row++) {
+                    for (let col = 0; col < COLS; col++) {
+                        const correctIndex = row * COLS + col;
+                        const imgX = col * pieceWidth;
+                        const imgY = row * pieceHeight;
+                        piecesData.push({
+                            id: correctIndex,
+                            correctIndex: correctIndex,
+                            imgX: imgX,
+                            imgY: imgY,
+                            width: pieceWidth,
+                            height: pieceHeight,
+                            row: row,
+                            col: col
+                        });
                     }
-                });
-            }
-        }
-        
-        function handleTouchMove(event) {
-            event.preventDefault();
-            if (isTouching && event.touches.length === 1) {
-                const touch = event.touches[0];
-                if (touch) {
-                    touchX = (touch.clientX / window.innerWidth) * 2 - 1;
-                    touchY = -(touch.clientY / window.innerHeight) * 2 + 1;
-                    
-                    // تحديث زوايا الهدف بناءً على موقع اللمس
-                    targetRotationY = touchX * Math.PI; // دوران أفقي كامل
-                    targetRotationX = touchY * (Math.PI / 3); // دوران رأسي محدود
                 }
-            }
-        }
-        
-        function handleTouchEnd(event) {
-            event.preventDefault();
-            isTouching = false;
-            // لا نعيد تعيين الهدف، بل نتركه يستمر في الدوران التلقائي ببطء
-        }
-        
-        // --- دوال الماوس (للكمبيوتر) ---
-        function handleMouseDown(event) {
-            isTouching = true;
-            touchX = (event.clientX / window.innerWidth) * 2 - 1;
-            touchY = -(event.clientY / window.innerHeight) * 2 + 1;
-            
-            // تأثير مؤقت عند النقر
-            mainGroup.children.forEach(child => {
-                if (child.material && !child.material.wireframe) {
-                    child.material.emissive.setHex(0x444400);
-                    setTimeout(() => {
-                        if (child.material) child.material.emissive.setHex(0x000000);
-                    }, 200);
-                }
-            });
-        }
-        
-        function handleMouseMove(event) {
-            if (isTouching) {
-                touchX = (event.clientX / window.innerWidth) * 2 - 1;
-                touchY = -(event.clientY / window.innerHeight) * 2 + 1;
                 
-                targetRotationY = touchX * Math.PI;
-                targetRotationX = touchY * (Math.PI / 3);
-            }
-        }
-        
-        function handleMouseUp(event) {
-            isTouching = false;
-        }
-        
-        // --- تكييف حجم الشاشة ---
-        window.addEventListener('resize', onWindowResize, false);
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-        
-        // --- حلقة الرسوم المتحركة ---
-        function animate() {
-            requestAnimationFrame(animate);
+                // تحديث المعاينة الصغيرة
+                thumbnailPreview.style.backgroundImage = `url('${currentImageUrl || img.src}')`;
+                thumbnailPreview.style.backgroundSize = 'cover';
+                
+                generateRandomOrder();
+                renderGrid();
+                isImageLoaded = true;
+                statusDiv.innerText = '✅ الصورة جاهزة! اسحب المربعات لتجميعها';
+            };
             
-            // تحديث زوايا الدوران بسلاسة (interpolation)
-            if (isTouching) {
-                // إذا كان المستخدم يلمس، نتحرك بسرعة نحو الهدف
-                currentRotationY += (targetRotationY - currentRotationY) * 0.1;
-                currentRotationX += (targetRotationX - currentRotationX) * 0.1;
+            img.onerror = () => {
+                console.warn("فشل تحميل الصورة، نستخدم صورة بديلة");
+                // صورة بديلة من بيكساباي
+                img.src = 'https://cdn.pixabay.com/photo/2015/04/23/22/00/tree-736885_1280.jpg';
+                currentImageUrl = img.src;
+                img.onload = () => {
+                    originalImage = img;
+                    pieceWidth = img.width / COLS;
+                    pieceHeight = img.height / ROWS;
+                    piecesData = [];
+                    for (let row = 0; row < ROWS; row++) {
+                        for (let col = 0; col < COLS; col++) {
+                            piecesData.push({
+                                id: row*COLS+col,
+                                correctIndex: row*COLS+col,
+                                imgX: col * (img.width/COLS),
+                                imgY: row * (img.height/ROWS),
+                                width: img.width/COLS,
+                                height: img.height/ROWS,
+                            });
+                        }
+                    }
+                    thumbnailPreview.style.backgroundImage = `url('${img.src}')`;
+                    generateRandomOrder();
+                    renderGrid();
+                    isImageLoaded = true;
+                    statusDiv.innerText = '🖼️ صورة طبيعة جميلة - رتب القطع';
+                };
+            };
+            
+            if (isFile && file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentImageUrl = e.target.result;
+                    img.src = currentImageUrl;
+                };
+                reader.readAsDataURL(file);
             } else {
-                // إذا لم يكن هناك لمس، دوران تلقائي بطيء
-                currentRotationY += autoRotateSpeed;
-                // لا نغير currentRotationX في الوضع التلقائي، مع ميل بسيط للعودة إلى الصفر
-                currentRotationX *= 0.98;
-                targetRotationX = 0; // إعادة توجيه الهدف تدريجياً للاستقامة
+                currentImageUrl = url;
+                img.src = url;
             }
-            
-            // تطبيق الدوران على المجموعة الرئيسية
-            mainGroup.rotation.x = currentRotationX;
-            mainGroup.rotation.y = currentRotationY;
-            
-            // دوران إضافي للحلقات والمكعبات الصغيرة
-            if (mainGroup.children.length > 0) {
-                // دوران الحلقات بشكل منفصل
-                if (mainGroup.children[2]) mainGroup.children[2].rotation.z += 0.01;
-                if (mainGroup.children[3]) mainGroup.children[3].rotation.x += 0.015;
-                
-                // دوران المكعبات الصغيرة حول نفسها
-                const cubesGroup = mainGroup.children[4];
-                if (cubesGroup) {
-                    cubesGroup.children.forEach((cube, index) => {
-                        cube.rotation.x += 0.02;
-                        cube.rotation.y += 0.03;
-                    });
-                }
-            }
-            
-            // تحريك النجوم ببطء
-            stars.rotation.y += 0.0002;
-            
-            // تحريك الكاميرا قليلاً للحصول على تأثير حيوي ولكن بدون تغيير مستوى التكبير/التصغير (نحافظ على مسافة ثابتة نسبياً)
-            const time = Date.now() * 0.001;
-            // نحافظ على مسافة الكاميرا من المركز بين 7.5 و 8.5 لتجنب تغيير الحجم الكبير
-            const radiusX = 5.5;
-            const radiusZ = 7.5;
-            camera.position.x = Math.sin(time * 0.1) * 1.2 + 4.5;
-            camera.position.z = Math.cos(time * 0.1) * 1.2 + 7.2;
-            camera.position.y = 3 + Math.sin(time * 0.2) * 0.4;
-            camera.lookAt(0, 0, 0);
-            
-            renderer.render(scene, camera);
         }
         
-        animate();
-        
-        document.addEventListener('gesturestart', function(e) {
-            e.preventDefault();
-        });
-        
-        window.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '0' || e.key === '=')) {
-                e.preventDefault();
+        // توليد ترتيب عشوائي
+        function generateRandomOrder() {
+            let arr = [];
+            for (let i = 0; i < TOTAL_PIECES; i++) arr.push(i);
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
             }
-        });
+            currentOrder = arr;
+            // تجنب أن يكون الترتيب مطابقاً للترتيب الصحيح
+            let perfect = true;
+            for(let i=0;i<TOTAL_PIECES;i++) if(currentOrder[i] !== i){ perfect=false; break; }
+            if(perfect){
+                [currentOrder[0], currentOrder[1]] = [currentOrder[1], currentOrder[0]];
+            }
+        }
         
-        console.log('لعبة الشكل الهندسي ثلاثي الأبعاد جاهزة! المس الشاشة لتحريك الشكل. تم تعطيل التكبير/التصغير.');
-    </script>
+        // عرض الشبكة: كل قطعة تعرض الجزء المخصص لها من الصورة حسب مكانها الحالي
+        function renderGrid() {
+            if (!originalImage) return;
+            gridContainer.innerHTML = '';
+            gridContainer.style.gridTemplateColumns = `repeat(${COLS}, 1fr)`;
+            gridContainer.style.gridTemplateRows = `repeat(${ROWS}, 1fr)`;
+            
+            for (let gridPos = 0; gridPos < TOTAL_PIECES; gridPos++) {
+                const pieceId = currentOrder[gridPos];      // أي قطعة موجودة في هذا الموقع حاليًا
+                const pieceInfo = piecesData[pieceId];      // بيانات هذه القطعة (أين يظهر جزءها من الصورة)
+                
+                const pieceDiv = document.createElement('div');
+                pieceDiv.className = 'puzzle-piece';
+                
+                // تعيين الخلفية: جزء الصورة المناسب لهذه القطعة
+                pieceDiv.style.backgroundImage = `url('${currentImageUrl}')`;
+                pieceDiv.style.backgroundSize = `${originalImage.width}px ${originalImage.height}px`;
+                pieceDiv.style.backgroundPosition = `-${pieceInfo.imgX}px -${pieceInfo.imgY}px`;
+                pieceDiv.style.backgroundRepeat = 'no-repeat';
+                
+                pieceDiv.setAttribute('data-piece-id', pieceId);
+                pieceDiv.setAttribute('data-current-pos', gridPos);
+                pieceDiv.setAttribute('data-correct-pos', pieceInfo.correctIndex);
+                
+                addDragListeners(pieceDiv, pieceId);
+                gridContainer.appendChild(pieceDiv);
+            }
+            checkWinCondition();
+        }
+        
+        // إضافة مستمعي السحب
+        function addDragListeners(element, pieceId) {
+            const startDrag = (e) => {
+                e.preventDefault();
+                if (!isImageLoaded || !originalImage) return;
+                if (isDragging) return;
+                draggedPieceId = pieceId;
+                isDragging = true;
+                element.classList.add('dragging');
+                element.style.opacity = '0.4';
+                createGhost(element, pieceId);
+                document.body.style.userSelect = 'none';
+            };
+            
+            const onDrag = (e) => {
+                if (!isDragging || draggedPieceId === null) return;
+                e.preventDefault();
+                const point = getEventPoint(e);
+                if (ghostElement) {
+                    ghostElement.style.left = `${point.x - ghostElement.offsetWidth/2}px`;
+                    ghostElement.style.top = `${point.y - ghostElement.offsetHeight/2}px`;
+                }
+                const elemUnderCursor = document.elementsFromPoint(point.x, point.y);
+                let targetDiv = null;
+                for(let el of elemUnderCursor) {
+                    if(el.classList && el.classList.contains('puzzle-piece') && el !== element) {
+                        targetDiv = el;
+                        break;
+                    }
+                }
+                if(currentTargetCell) currentTargetCell.classList.remove('drop-zone-highlight');
+                if(targetDiv) {
+                    targetDiv.classList.add('drop-zone-highlight');
+                    currentTargetCell = targetDiv;
+                } else {
+                    currentTargetCell = null;
+                }
+            };
+            
+            const endDrag = (e) => {
+                if(!isDragging) { cleanup(); return; }
+                e.preventDefault();
+                if(currentTargetCell && draggedPieceId !== null) {
+                    const targetPieceId = parseInt(currentTargetCell.getAttribute('data-piece-id'));
+                    const sourcePos = getPosByPieceId(draggedPieceId);
+                    const targetPos = getPosByPieceId(targetPieceId);
+                    if(sourcePos !== -1 && targetPos !== -1 && sourcePos !== targetPos) {
+                        // تبديل القطعتين في الترتيب
+                        [currentOrder[sourcePos], currentOrder[targetPos]] = [currentOrder[targetPos], currentOrder[sourcePos]];
+                        renderGrid();
+                    }
+                }
+                cleanup();
+                checkWinCondition();
+            };
+            
+            element.addEventListener('mousedown', startDrag);
+            window.addEventListener('mousemove', onDrag);
+            window.addEventListener('mouseup', endDrag);
+            
+            element.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                startDrag({ preventDefault: ()=> {}, clientX: touch.clientX, clientY: touch.clientY });
+            }, {passive:false});
+            window.addEventListener('touchmove', (e) => {
+                if(isDragging) {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    onDrag({ clientX: touch.clientX, clientY: touch.clientY, preventDefault:()=>{} });
+                }
+            }, {passive:false});
+            window.addEventListener('touchend', endDrag);
+            element.addEventListener('contextmenu', e=>e.preventDefault());
+        }
+        
+        function getPosByPieceId(pieceId) {
+            for(let i=0;i<currentOrder.length;i++) if(currentOrder[i] === pieceId) return i;
+            return -1;
+        }
+        
+        function createGhost(originalEl, pieceId) {
+            if(ghostElement) ghostElement.remove();
+            const rect = originalEl.getBoundingClientRect();
+            const piece = piecesData[pieceId];
+            ghostElement = document.createElement('div');
+            ghostElement.style.position = 'fixed';
+            ghostElement.style.width = `${rect.width}px`;
+            ghostElement.style.height = `${rect.height}px`;
+            ghostElement.style.borderRadius = '12px';
+            ghostElement.style.boxShadow = '0 8px 25px black';
+            ghostElement.style.backgroundImage = `url('${currentImageUrl}')`;
+            ghostElement.style.backgroundSize = `${originalImage.width}px ${originalImage.height}px`;
+            ghostElement.style.backgroundPosition = `-${piece.imgX}px -${piece.imgY}px`;
+            ghostElement.style.pointerEvents = 'none';
+            ghostElement.style.zIndex = '10000';
+            ghostElement.style.border = '3px solid gold';
+            document.body.appendChild(ghostElement);
+            ghostElement.style.left = `${rect.left}px`;
+            ghostElement.style.top = `${rect.top}px`;
+        }
+        
+        function cleanup() {
+            if(ghostElement && ghostElement.remove) ghostElement.remove();
+            ghostElement = null;
+            if(currentTargetCell) currentTargetCell.classList.remove('drop-zone-highlight');
+            const all = document.querySelectorAll('.puzzle-piece');
+            all.forEach(p=>{ p.classList.remove('dragging'); p.style.opacity=''; });
+            isDragging = false;
+            draggedPieceId = null;
+            currentTargetCell = null;
+            document.body.style.userSelect = '';
+        }
+        
+        function getEventPoint(e) {
+            if(e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            return { x: e.clientX, y: e.clientY };
+        }
+        
+        // التحقق من الفوز: هل كل قطعة في مكانها الصحيح؟
+        function checkWinCondition() {
+            if(!currentOrder.length || !isImageLoaded) return false;
+            let win = true;
+            for(let i=0;i<TOTAL_PIECES;i++) {
+                if(currentOrder[i] !== i) { win=false; break; }
+            }
+            if(win) {
+                statusDiv.innerText = '🏆 رائع! لقد أكملت الصورة بنجاح 🏆';
+                showWinMessage();
+                return true;
+            }
+            return false;
+        }
+        
+        function showWinMessage() {
+            if(document.querySelector('.winner-overlay')) return;
+            const div = document.createElement('div');
+            div.className = 'winner-overlay';
+            div.innerHTML = `<div class="winner-card"><h2>🎉 تهانينا! 🎉</h2><p>🔷 تم تجميع الصورة بالكامل 🔷</p><button id="resetWinBtn">لعبة جديدة</button></div>`;
+            document.body.appendChild(div);
+            div.querySelector('#resetWinBtn').onclick = () => {
+                div.remove();
+                shufflePieces();
+            };
+        }
+        
+        function shufflePieces() {
+            if(!isImageLoaded) {
+                loadImageFromUrlOrFile(getDefaultImageUrl());
+                return;
+            }
+            generateRandomOrder();
+            renderGrid();
+            statusDiv.innerText = '🎲 تم خلط المربعات، حاول إعادة تجميع الصورة';
+        }
+        
+        // رفع صورة من الجهاز
+        uploadBtn.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => {
+            if(e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                loadImageFromUrlOrFile('', true, file);
+            }
+        };
+        shuffleBtn.onclick = () => shufflePieces();
+        
+        // بدء اللعبة بصورة طبيعية جميلة
+        loadImageFromUrlOrFile(getDefaultImageUrl());
+    })();
+</script>
 </body>
 </html>
