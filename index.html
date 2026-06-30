@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>لعبة تركيب الصورة - أعد تجميع الصورة الأساسية</title>
+    <title>شاشة تفاعلية - دوائر وخطوط</title>
     <style>
         * {
             margin: 0;
@@ -14,568 +14,376 @@
 
         body {
             min-height: 100vh;
-            background: linear-gradient(145deg, #1a2a3a 0%, #0f1a24 100%);
+            background: #0b0b0b;
             display: flex;
             justify-content: center;
             align-items: center;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             touch-action: none;
-            padding: 20px;
+            padding: 0;
+            overflow: hidden;
         }
 
-        .game-wrapper {
-            background: rgba(0, 0, 0, 0.35);
-            border-radius: 24px;
-            padding: 20px 25px 25px 25px;
-            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(4px);
-            max-width: 1000px;
-            width: 100%;
-        }
-
-        .puzzle-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-        }
-
-        /* صورة المعاينة الصغيرة */
-        .preview-area {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 10px;
-        }
-        .thumbnail {
-            width: 120px;
-            height: 120px;
-            border-radius: 16px;
-            background-size: cover;
-            background-position: center;
-            border: 3px solid #ffd966;
-            box-shadow: 0 4px 12px black;
-            background-color: #2e3b2c;
-        }
-
-        /* شبكة الألغاز */
-        .grid-board {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            background: #2e3b2c;
-            border-radius: 16px;
-            padding: 10px;
-            gap: 6px;
-            box-shadow: inset 0 0 0 2px rgba(255, 215, 150, 0.3), 0 10px 20px rgba(0, 0, 0, 0.3);
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .grid-board {
-            grid-template-rows: repeat(8, 1fr);
-            aspect-ratio: 5 / 8;
-        }
-
-        /* كل قطعة - جزء حقيقي من الصورة */
-        .puzzle-piece {
-            aspect-ratio: 1 / 1;
-            background-size: cover;
-            background-repeat: no-repeat;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-            transition: 0.1s linear;
-            cursor: grab;
-            touch-action: none;
-            will-change: transform;
+        .canvas-container {
             position: relative;
-            background-color: #4a5b44;
+            width: 100vw;
+            height: 100vh;
+            background: #0b0b0b;
+            touch-action: none;
+            cursor: crosshair;
+            overflow: hidden;
         }
 
-        .puzzle-piece:active {
-            cursor: grabbing;
-        }
-
-        .puzzle-piece.dragging {
-            opacity: 0.7;
-            cursor: grabbing;
-            filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.6));
-            z-index: 999;
-        }
-
-        .drop-zone-highlight {
-            box-shadow: 0 0 0 3px #ffd966, inset 0 0 0 2px rgba(255, 235, 140, 0.9);
-            transform: scale(0.97);
-            transition: 0.05s linear;
-        }
-
-        .info-panel {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        /* طبقة الرسم الرئيسية (canvas) */
+        #drawCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
-            margin-top: 10px;
-            gap: 15px;
-            flex-wrap: wrap;
+            height: 100%;
+            display: block;
+            background: #0b0b0b;
+            touch-action: none;
+            pointer-events: auto;
         }
 
-        .status {
-            background: #000000aa;
-            backdrop-filter: blur(10px);
-            padding: 8px 20px;
-            border-radius: 40px;
-            color: #ffefcf;
-            font-weight: bold;
+        /* عناصر الدوائر والخطوط تظهر فوق canvas */
+        .interaction-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .circle-fade {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: fadeOut 0.9s ease-out forwards;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 0.95; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.3); }
+        }
+
+        /* خطوط السحب العريضة (تظهر كعناصر div) */
+        .draw-line {
+            position: absolute;
+            height: 18px;
+            border-radius: 20px;
+            pointer-events: none;
+            transform-origin: 0 50%;
+            box-shadow: 0 0 15px rgba(255,255,255,0.3);
+            transition: none;
+            will-change: transform, width, left, top;
+        }
+
+        /* رسالة إرشادية بسيطة تختفي بعد ثوان */
+        .hint {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #888;
+            background: rgba(20,20,20,0.7);
+            padding: 10px 24px;
+            border-radius: 60px;
             font-size: 0.9rem;
-            border: 1px solid #ffd966aa;
-        }
-
-        button {
-            background: #f5b042;
-            border: none;
-            padding: 8px 24px;
-            border-radius: 40px;
-            font-weight: bold;
-            font-size: 0.9rem;
-            color: #2d2b1f;
-            cursor: pointer;
-            transition: 0.2s;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            font-family: inherit;
-        }
-
-        button:hover {
-            background: #ffc857;
-            transform: scale(1.02);
-        }
-
-        .upload-btn {
-            background: #4a7c59;
-            color: white;
-        }
-
-        .upload-btn:hover {
-            background: #5f9e6e;
-        }
-
-        .hint-message {
-            background: #1f2a1cee;
-            color: #ffe1a0;
-            padding: 6px 18px;
-            border-radius: 40px;
-            font-size: 0.8rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
+            backdrop-filter: blur(6px);
+            border: 1px solid #333;
+            pointer-events: none;
+            z-index: 20;
+            white-space: nowrap;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+            transition: opacity 0.8s;
         }
 
         @media (max-width: 700px) {
-            .grid-board {
-                gap: 4px;
-                padding: 6px;
-            }
-            .info-panel {
-                gap: 8px;
-            }
-            .status, button, .hint-message {
+            .hint {
                 font-size: 0.7rem;
-                padding: 5px 12px;
+                padding: 6px 16px;
+                bottom: 20px;
             }
-            .thumbnail {
-                width: 80px;
-                height: 80px;
+            .draw-line {
+                height: 14px;
             }
-        }
-
-        .winner-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(5px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-        .winner-card {
-            background: #fef7e0;
-            border-radius: 48px;
-            padding: 30px 40px;
-            text-align: center;
-            box-shadow: 0 25px 40px black;
-            animation: pop 0.4s ease-out;
-        }
-        .winner-card h2 {
-            color: #2a6b2f;
-            font-size: 2rem;
-            margin-bottom: 10px;
-        }
-        .winner-card button {
-            background: #2a6b2f;
-            color: white;
-            margin-top: 20px;
-            font-size: 1.1rem;
-            padding: 10px 32px;
-        }
-        @keyframes pop {
-            from { transform: scale(0.8); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
         }
     </style>
 </head>
 <body>
-<div class="game-wrapper">
-    <div class="puzzle-container">
-        <div class="preview-area">
-            <div class="thumbnail" id="thumbnailPreview" style="background-image: url('');"></div>
-        </div>
-        <div class="grid-board" id="puzzleGrid"></div>
-        
-        <div class="info-panel">
-            <div class="status" id="statusMsg">🧩 رتب المربعات لتظهر الصورة الكاملة</div>
-            <input type="file" id="uploadImage" accept="image/*" style="display: none;">
-            <button id="uploadBtn" class="upload-btn">📷 استخدام صورة</button>
-            <button id="shuffleBtn">🔄 ترتيب عشوائي</button>
-            <div class="hint-message">👇 اسحب القطعة إلى مكانها الصحيح</div>
-        </div>
-    </div>
-</div>
+    <div class="canvas-container" id="canvasContainer">
+        <!-- Canvas حقيقي لالتقاط الأحداث (معتم) -->
+        <canvas id="drawCanvas"></canvas>
 
-<script>
-    (function(){
-        const COLS = 5;
-        const ROWS = 8;
-        const TOTAL_PIECES = COLS * ROWS;
-        
-        let piecesData = [];      // كل قطعة: { id, correctIndex, imgX, imgY, width, height }
-        let currentOrder = [];     // ترتيب القطع الحالي (قائمة بأرقام id القطع)
-        let pieceWidth = 0, pieceHeight = 0;
-        let originalImage = null;
-        let isImageLoaded = false;
-        let currentImageUrl = null;
-        
-        const gridContainer = document.getElementById('puzzleGrid');
-        const shuffleBtn = document.getElementById('shuffleBtn');
-        const uploadBtn = document.getElementById('uploadBtn');
-        const fileInput = document.getElementById('uploadImage');
-        const statusDiv = document.getElementById('statusMsg');
-        const thumbnailPreview = document.getElementById('thumbnailPreview');
-        
-        // متغيرات السحب والإفلات
-        let draggedPieceId = null;
-        let isDragging = false;
-        let ghostElement = null;
-        let currentTargetCell = null;
-        
-        // ========== الصورة الافتراضية الجميلة (طبيعة خلابة) بدلاً من الأشكال الهندسية ==========
-        function getDefaultImageUrl() {
-            // صورة طبيعة جميلة عالية الجودة (من مصدر موثوق) - مناظر طبيعية
-            return 'https://images.pexels.com/photos/268533/pexels-photo-268533.jpeg?auto=compress&cs=tinysrgb&w=800&h=1280&fit=crop';
-            // يمكنك تغيير هذا الرابط إلى images/kids.png إذا أردت
-        }
-        
-        // تحميل الصورة (من رابط أو من ملف)
-        function loadImageFromUrlOrFile(url, isFile = false, file = null) {
-            const img = new Image();
-            img.crossOrigin = "Anonymous";
-            
-            img.onload = function() {
-                originalImage = img;
-                pieceWidth = img.width / COLS;
-                pieceHeight = img.height / ROWS;
-                
-                // بناء بيانات القطع (كل قطعة تحمل جزءاً من الصورة)
-                piecesData = [];
-                for (let row = 0; row < ROWS; row++) {
-                    for (let col = 0; col < COLS; col++) {
-                        const correctIndex = row * COLS + col;
-                        const imgX = col * pieceWidth;
-                        const imgY = row * pieceHeight;
-                        piecesData.push({
-                            id: correctIndex,
-                            correctIndex: correctIndex,
-                            imgX: imgX,
-                            imgY: imgY,
-                            width: pieceWidth,
-                            height: pieceHeight,
-                            row: row,
-                            col: col
-                        });
-                    }
+        <!-- طبقة التفاعل (تظهر عليها الدوائر والخطوط) -->
+        <div class="interaction-layer" id="interactionLayer"></div>
+
+        <!-- رسالة توجيهية -->
+        <div class="hint" id="hintMessage">👆 اضغط أو اسحب بأصبعك لرسم دوائر وخطوط عريضة</div>
+    </div>
+
+    <script>
+        (function() {
+            const container = document.getElementById('canvasContainer');
+            const canvas = document.getElementById('drawCanvas');
+            const ctx = canvas.getContext('2d');
+            const interactionLayer = document.getElementById('interactionLayer');
+            const hint = document.getElementById('hintMessage');
+
+            // ضبط حجم canvas لملء الشاشة
+            function resizeCanvas() {
+                const rect = container.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+                ctx.fillStyle = '#0b0b0b';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            resizeCanvas();
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                ctx.fillStyle = '#0b0b0b';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            });
+
+            // متغيرات التتبع
+            let isPointerDown = false;
+            let lastX = 0, lastY = 0;
+            let currentLineElement = null;    // عنصر الخط الحالي (div)
+            let lineStartX = 0, lineStartY = 0;
+
+            // دوال مساعدة للألوان العشوائية الزاهية
+            function getRandomVibrantColor() {
+                const hue = Math.floor(Math.random() * 360);
+                return `hsl(${hue}, 85%, 60%)`;
+            }
+
+            function getRandomColorWithAlpha(alpha = 0.85) {
+                const hue = Math.floor(Math.random() * 360);
+                return `hsla(${hue}, 90%, 65%, ${alpha})`;
+            }
+
+            // حذف جميع الخطوط الموجودة (تُستدعى قبل بدء خط جديد)
+            function clearAllLines() {
+                const lines = interactionLayer.querySelectorAll('.draw-line');
+                lines.forEach(el => el.remove());
+            }
+
+            // إنشاء دائرة في نقطة معينة بلون عشوائي
+            function createCircle(clientX, clientY) {
+                const rect = container.getBoundingClientRect();
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+
+                const size = 40 + Math.random() * 80;
+                const color = getRandomColorWithAlpha(0.9);
+
+                const circle = document.createElement('div');
+                circle.className = 'circle-fade';
+                circle.style.width = size + 'px';
+                circle.style.height = size + 'px';
+                circle.style.left = x + 'px';
+                circle.style.top = y + 'px';
+                circle.style.background = `radial-gradient(circle at 30% 30%, ${color}, ${color}dd, ${color}88)`;
+                circle.style.boxShadow = `0 0 30px ${color}`;
+
+                interactionLayer.appendChild(circle);
+
+                setTimeout(() => {
+                    if (circle.parentNode) circle.remove();
+                }, 1000);
+            }
+
+            // بدء خط جديد (عند الضغط) — مع مسح جميع الخطوط السابقة
+            function startLine(clientX, clientY) {
+                // 🔥 إزالة جميع الخطوط القديمة قبل رسم الخط الجديد
+                clearAllLines();
+
+                // إنهاء أي خط سابق (آمن)
+                if (currentLineElement) {
+                    currentLineElement.remove();
+                    currentLineElement = null;
                 }
-                
-                // تحديث المعاينة الصغيرة
-                thumbnailPreview.style.backgroundImage = `url('${currentImageUrl || img.src}')`;
-                thumbnailPreview.style.backgroundSize = 'cover';
-                
-                generateRandomOrder();
-                renderGrid();
-                isImageLoaded = true;
-                statusDiv.innerText = '✅ الصورة جاهزة! اسحب المربعات لتجميعها';
-            };
-            
-            img.onerror = () => {
-                console.warn("فشل تحميل الصورة، نستخدم صورة بديلة");
-                // صورة بديلة من بيكساباي
-                img.src = 'https://cdn.pixabay.com/photo/2015/04/23/22/00/tree-736885_1280.jpg';
-                currentImageUrl = img.src;
-                img.onload = () => {
-                    originalImage = img;
-                    pieceWidth = img.width / COLS;
-                    pieceHeight = img.height / ROWS;
-                    piecesData = [];
-                    for (let row = 0; row < ROWS; row++) {
-                        for (let col = 0; col < COLS; col++) {
-                            piecesData.push({
-                                id: row*COLS+col,
-                                correctIndex: row*COLS+col,
-                                imgX: col * (img.width/COLS),
-                                imgY: row * (img.height/ROWS),
-                                width: img.width/COLS,
-                                height: img.height/ROWS,
-                            });
+
+                const rect = container.getBoundingClientRect();
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+
+                lastX = x;
+                lastY = y;
+                lineStartX = x;
+                lineStartY = y;
+
+                const line = document.createElement('div');
+                line.className = 'draw-line';
+                const color = getRandomVibrantColor();
+                line.style.background = `linear-gradient(90deg, ${color}, ${color}dd)`;
+                line.style.boxShadow = `0 0 20px ${color}`;
+
+                line.style.left = x + 'px';
+                line.style.top = y + 'px';
+                line.style.width = '0px';
+                line.style.height = '18px';  // سمك عريض
+                line.style.transform = 'rotate(0deg)';
+
+                interactionLayer.appendChild(line);
+                currentLineElement = line;
+                isPointerDown = true;
+            }
+
+            // تحديث الخط أثناء السحب
+            function updateLine(clientX, clientY) {
+                if (!isPointerDown || !currentLineElement) return;
+
+                const rect = container.getBoundingClientRect();
+                const currentX = clientX - rect.left;
+                const currentY = clientY - rect.top;
+
+                const dx = currentX - lineStartX;
+                const dy = currentY - lineStartY;
+                const distance = Math.sqrt(dx*dx + dy*dy);
+                if (distance < 3) return;
+
+                const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+                currentLineElement.style.width = distance + 'px';
+                currentLineElement.style.transform = `rotate(${angle}deg)`;
+                currentLineElement.style.left = lineStartX + 'px';
+                currentLineElement.style.top = lineStartY + 'px';
+
+                lastX = currentX;
+                lastY = currentY;
+            }
+
+            // إنهاء الخط الحالي (يُترك ليختفي بعد فترة قصيرة)
+            function endLine() {
+                if (currentLineElement) {
+                    currentLineElement.style.transition = 'opacity 0.3s';
+                    currentLineElement.style.opacity = '0.6';
+                    setTimeout(() => {
+                        if (currentLineElement && currentLineElement.parentNode) {
+                            currentLineElement.remove();
                         }
-                    }
-                    thumbnailPreview.style.backgroundImage = `url('${img.src}')`;
-                    generateRandomOrder();
-                    renderGrid();
-                    isImageLoaded = true;
-                    statusDiv.innerText = '🖼️ صورة طبيعة جميلة - رتب القطع';
-                };
-            };
-            
-            if (isFile && file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    currentImageUrl = e.target.result;
-                    img.src = currentImageUrl;
-                };
-                reader.readAsDataURL(file);
-            } else {
-                currentImageUrl = url;
-                img.src = url;
+                    }, 350);
+                    currentLineElement = null;
+                }
+                isPointerDown = false;
             }
-        }
-        
-        // توليد ترتيب عشوائي
-        function generateRandomOrder() {
-            let arr = [];
-            for (let i = 0; i < TOTAL_PIECES; i++) arr.push(i);
-            for (let i = arr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
-            }
-            currentOrder = arr;
-            // تجنب أن يكون الترتيب مطابقاً للترتيب الصحيح
-            let perfect = true;
-            for(let i=0;i<TOTAL_PIECES;i++) if(currentOrder[i] !== i){ perfect=false; break; }
-            if(perfect){
-                [currentOrder[0], currentOrder[1]] = [currentOrder[1], currentOrder[0]];
-            }
-        }
-        
-        // عرض الشبكة: كل قطعة تعرض الجزء المخصص لها من الصورة حسب مكانها الحالي
-        function renderGrid() {
-            if (!originalImage) return;
-            gridContainer.innerHTML = '';
-            gridContainer.style.gridTemplateColumns = `repeat(${COLS}, 1fr)`;
-            gridContainer.style.gridTemplateRows = `repeat(${ROWS}, 1fr)`;
-            
-            for (let gridPos = 0; gridPos < TOTAL_PIECES; gridPos++) {
-                const pieceId = currentOrder[gridPos];      // أي قطعة موجودة في هذا الموقع حاليًا
-                const pieceInfo = piecesData[pieceId];      // بيانات هذه القطعة (أين يظهر جزءها من الصورة)
-                
-                const pieceDiv = document.createElement('div');
-                pieceDiv.className = 'puzzle-piece';
-                
-                // تعيين الخلفية: جزء الصورة المناسب لهذه القطعة
-                pieceDiv.style.backgroundImage = `url('${currentImageUrl}')`;
-                pieceDiv.style.backgroundSize = `${originalImage.width}px ${originalImage.height}px`;
-                pieceDiv.style.backgroundPosition = `-${pieceInfo.imgX}px -${pieceInfo.imgY}px`;
-                pieceDiv.style.backgroundRepeat = 'no-repeat';
-                
-                pieceDiv.setAttribute('data-piece-id', pieceId);
-                pieceDiv.setAttribute('data-current-pos', gridPos);
-                pieceDiv.setAttribute('data-correct-pos', pieceInfo.correctIndex);
-                
-                addDragListeners(pieceDiv, pieceId);
-                gridContainer.appendChild(pieceDiv);
-            }
-            checkWinCondition();
-        }
-        
-        // إضافة مستمعي السحب
-        function addDragListeners(element, pieceId) {
-            const startDrag = (e) => {
+
+            // ========== معالجة الأحداث (الفأرة واللمس) ==========
+
+            // === أحداث الفأرة ===
+            function onMouseDown(e) {
                 e.preventDefault();
-                if (!isImageLoaded || !originalImage) return;
-                if (isDragging) return;
-                draggedPieceId = pieceId;
-                isDragging = true;
-                element.classList.add('dragging');
-                element.style.opacity = '0.4';
-                createGhost(element, pieceId);
-                document.body.style.userSelect = 'none';
-            };
-            
-            const onDrag = (e) => {
-                if (!isDragging || draggedPieceId === null) return;
+                const clientX = e.clientX;
+                const clientY = e.clientY;
+
+                createCircle(clientX, clientY);
+                startLine(clientX, clientY);
+
+                if (hint) hint.style.opacity = '0';
+            }
+
+            function onMouseMove(e) {
                 e.preventDefault();
-                const point = getEventPoint(e);
-                if (ghostElement) {
-                    ghostElement.style.left = `${point.x - ghostElement.offsetWidth/2}px`;
-                    ghostElement.style.top = `${point.y - ghostElement.offsetHeight/2}px`;
+                if (isPointerDown) {
+                    updateLine(e.clientX, e.clientY);
                 }
-                const elemUnderCursor = document.elementsFromPoint(point.x, point.y);
-                let targetDiv = null;
-                for(let el of elemUnderCursor) {
-                    if(el.classList && el.classList.contains('puzzle-piece') && el !== element) {
-                        targetDiv = el;
-                        break;
-                    }
-                }
-                if(currentTargetCell) currentTargetCell.classList.remove('drop-zone-highlight');
-                if(targetDiv) {
-                    targetDiv.classList.add('drop-zone-highlight');
-                    currentTargetCell = targetDiv;
-                } else {
-                    currentTargetCell = null;
-                }
-            };
-            
-            const endDrag = (e) => {
-                if(!isDragging) { cleanup(); return; }
+            }
+
+            function onMouseUp(e) {
                 e.preventDefault();
-                if(currentTargetCell && draggedPieceId !== null) {
-                    const targetPieceId = parseInt(currentTargetCell.getAttribute('data-piece-id'));
-                    const sourcePos = getPosByPieceId(draggedPieceId);
-                    const targetPos = getPosByPieceId(targetPieceId);
-                    if(sourcePos !== -1 && targetPos !== -1 && sourcePos !== targetPos) {
-                        // تبديل القطعتين في الترتيب
-                        [currentOrder[sourcePos], currentOrder[targetPos]] = [currentOrder[targetPos], currentOrder[sourcePos]];
-                        renderGrid();
-                    }
+                if (isPointerDown) {
+                    endLine();
                 }
-                cleanup();
-                checkWinCondition();
-            };
-            
-            element.addEventListener('mousedown', startDrag);
-            window.addEventListener('mousemove', onDrag);
-            window.addEventListener('mouseup', endDrag);
-            
-            element.addEventListener('touchstart', (e) => {
+                isPointerDown = false;
+            }
+
+            // === أحداث اللمس ===
+            function onTouchStart(e) {
                 e.preventDefault();
                 const touch = e.touches[0];
-                startDrag({ preventDefault: ()=> {}, clientX: touch.clientX, clientY: touch.clientY });
-            }, {passive:false});
-            window.addEventListener('touchmove', (e) => {
-                if(isDragging) {
-                    e.preventDefault();
-                    const touch = e.touches[0];
-                    onDrag({ clientX: touch.clientX, clientY: touch.clientY, preventDefault:()=>{} });
+                if (!touch) return;
+                const clientX = touch.clientX;
+                const clientY = touch.clientY;
+
+                createCircle(clientX, clientY);
+                startLine(clientX, clientY);
+
+                if (hint) hint.style.opacity = '0';
+            }
+
+            function onTouchMove(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                if (!touch) return;
+                if (isPointerDown) {
+                    updateLine(touch.clientX, touch.clientY);
                 }
-            }, {passive:false});
-            window.addEventListener('touchend', endDrag);
-            element.addEventListener('contextmenu', e=>e.preventDefault());
-        }
-        
-        function getPosByPieceId(pieceId) {
-            for(let i=0;i<currentOrder.length;i++) if(currentOrder[i] === pieceId) return i;
-            return -1;
-        }
-        
-        function createGhost(originalEl, pieceId) {
-            if(ghostElement) ghostElement.remove();
-            const rect = originalEl.getBoundingClientRect();
-            const piece = piecesData[pieceId];
-            ghostElement = document.createElement('div');
-            ghostElement.style.position = 'fixed';
-            ghostElement.style.width = `${rect.width}px`;
-            ghostElement.style.height = `${rect.height}px`;
-            ghostElement.style.borderRadius = '12px';
-            ghostElement.style.boxShadow = '0 8px 25px black';
-            ghostElement.style.backgroundImage = `url('${currentImageUrl}')`;
-            ghostElement.style.backgroundSize = `${originalImage.width}px ${originalImage.height}px`;
-            ghostElement.style.backgroundPosition = `-${piece.imgX}px -${piece.imgY}px`;
-            ghostElement.style.pointerEvents = 'none';
-            ghostElement.style.zIndex = '10000';
-            ghostElement.style.border = '3px solid gold';
-            document.body.appendChild(ghostElement);
-            ghostElement.style.left = `${rect.left}px`;
-            ghostElement.style.top = `${rect.top}px`;
-        }
-        
-        function cleanup() {
-            if(ghostElement && ghostElement.remove) ghostElement.remove();
-            ghostElement = null;
-            if(currentTargetCell) currentTargetCell.classList.remove('drop-zone-highlight');
-            const all = document.querySelectorAll('.puzzle-piece');
-            all.forEach(p=>{ p.classList.remove('dragging'); p.style.opacity=''; });
-            isDragging = false;
-            draggedPieceId = null;
-            currentTargetCell = null;
-            document.body.style.userSelect = '';
-        }
-        
-        function getEventPoint(e) {
-            if(e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            return { x: e.clientX, y: e.clientY };
-        }
-        
-        // التحقق من الفوز: هل كل قطعة في مكانها الصحيح؟
-        function checkWinCondition() {
-            if(!currentOrder.length || !isImageLoaded) return false;
-            let win = true;
-            for(let i=0;i<TOTAL_PIECES;i++) {
-                if(currentOrder[i] !== i) { win=false; break; }
             }
-            if(win) {
-                statusDiv.innerText = '🏆 رائع! لقد أكملت الصورة بنجاح 🏆';
-                showWinMessage();
-                return true;
+
+            function onTouchEnd(e) {
+                e.preventDefault();
+                if (isPointerDown) {
+                    endLine();
+                }
+                isPointerDown = false;
             }
-            return false;
-        }
-        
-        function showWinMessage() {
-            if(document.querySelector('.winner-overlay')) return;
-            const div = document.createElement('div');
-            div.className = 'winner-overlay';
-            div.innerHTML = `<div class="winner-card"><h2>🎉 تهانينا! 🎉</h2><p>🔷 تم تجميع الصورة بالكامل 🔷</p><button id="resetWinBtn">لعبة جديدة</button></div>`;
-            document.body.appendChild(div);
-            div.querySelector('#resetWinBtn').onclick = () => {
-                div.remove();
-                shufflePieces();
-            };
-        }
-        
-        function shufflePieces() {
-            if(!isImageLoaded) {
-                loadImageFromUrlOrFile(getDefaultImageUrl());
-                return;
-            }
-            generateRandomOrder();
-            renderGrid();
-            statusDiv.innerText = '🎲 تم خلط المربعات، حاول إعادة تجميع الصورة';
-        }
-        
-        // رفع صورة من الجهاز
-        uploadBtn.onclick = () => fileInput.click();
-        fileInput.onchange = (e) => {
-            if(e.target.files && e.target.files[0]) {
-                const file = e.target.files[0];
-                loadImageFromUrlOrFile('', true, file);
-            }
-        };
-        shuffleBtn.onclick = () => shufflePieces();
-        
-        // بدء اللعبة بصورة طبيعية جميلة
-        loadImageFromUrlOrFile(getDefaultImageUrl());
-    })();
-</script>
+
+            // === ربط الأحداث بالـ canvas ===
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('mouseleave', (e) => {
+                if (isPointerDown) {
+                    endLine();
+                }
+                isPointerDown = false;
+            });
+
+            canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+            canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+            canvas.addEventListener('touchcancel', (e) => {
+                e.preventDefault();
+                if (isPointerDown) {
+                    endLine();
+                }
+                isPointerDown = false;
+            });
+
+            canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            document.addEventListener('dragstart', (e) => e.preventDefault());
+
+            window.addEventListener('blur', () => {
+                if (isPointerDown) {
+                    endLine();
+                }
+                isPointerDown = false;
+            });
+
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                ctx.fillStyle = '#0b0b0b';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            });
+
+            // اختفاء الرسالة بعد 4 ثواني تلقائياً
+            setTimeout(() => {
+                if (hint) hint.style.opacity = '0.4';
+                setTimeout(() => {
+                    if (hint) hint.style.opacity = '0';
+                }, 2000);
+            }, 4000);
+
+            console.log('✅ الشاشة التفاعلية جاهزة - الخطوط القديمة تختفي تلقائياً عند بدء خط جديد');
+        })();
+    </script>
 </body>
 </html>
